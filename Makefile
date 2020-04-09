@@ -9,7 +9,7 @@ $(TABLE_FILES): tpch-dbgen/dbgen
 	cd tpch-dbgen && ./dbgen -v -f -s $(SCALE_FACTOR)
 	chmod +r $(TABLE_FILES)
 
-tpch-dbgen/dbgen tpch-dbgen/qgen: tpch-dbgen/makefile
+tpch-dbgen/dbgen tpch-dbgen/qgen: tpch-dbgen/Makefile
 	$(MAKE) -C tpch-dbgen
 
 queries:
