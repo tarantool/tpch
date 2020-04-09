@@ -9,10 +9,17 @@ $(TABLE_FILES): tpch-dbgen/dbgen
 	cd tpch-dbgen && ./dbgen -v -f -s $(SCALE_FACTOR)
 	chmod +r $(TABLE_FILES)
 
-tpch-dbgen/dbgen: tpch-dbgen/makefile
-	cd tpch-dbgen && $(MAKE)
+tpch-dbgen/dbgen tpch-dbgen/qgen: tpch-dbgen/makefile
+	$(MAKE) -C tpch-dbgen
+
+queries:
+	@mkdir -p queries/ > /dev/null
+	./gen_queries.sh	
 
 clean:
-	rm -rf TPC-H.db $(TABLE_FILES) tpch-dbgen/dbgen
+	rm -rf TPC-H.db $(TABLE_FILES) tpch-dbgen/dbgen tpch-dbgen/qgen
 
 all: TPC-H.db
+
+run-%:
+	echo  $*
