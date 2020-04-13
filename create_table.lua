@@ -1,17 +1,37 @@
+box.cfg{ listen = 3301, memtx_memory = 10 * 1024^3 }
+-- box.schema.user.drop('guest', {['read,write,execute']= 'universe'})
+box.schema.user.grant('guest', 'read,write,execute', 'universe', 
+                       nil, {if_not_exists=true})
+
+function create_table(cdata)
+    print(cdata)
+    local lowcase = cdata:lower()
+    table = string.match(lowcase, '^create%s+table%s+(%a+)%s')
+    if not table then return end
+    local ddl = string.format('drop table if exists %s', table)
+    box.execute(ddl)
+    box.execute(cdata)
+end
+
+create_table [[
 CREATE TABLE REGION (
   R_REGIONKEY INTEGER PRIMARY KEY NOT NULL,
   R_NAME      TEXT NOT NULL,
   R_COMMENT   TEXT
-);
+)
+]]
 
+create_table [[
 CREATE TABLE NATION (
   N_NATIONKEY INTEGER PRIMARY KEY NOT NULL,
   N_NAME      TEXT NOT NULL,
   N_REGIONKEY INTEGER NOT NULL,
   N_COMMENT   TEXT,
   FOREIGN KEY (N_REGIONKEY) REFERENCES REGION(R_REGIONKEY)
-);
+)
+]]
 
+create_table [[
 CREATE TABLE PART (
   P_PARTKEY     INTEGER PRIMARY KEY NOT NULL,
   P_NAME        TEXT NOT NULL,
@@ -22,8 +42,10 @@ CREATE TABLE PART (
   P_CONTAINER   TEXT NOT NULL,
   P_RETAILPRICE INTEGER NOT NULL,
   P_COMMENT     TEXT NOT NULL
-);
+)
+]]
 
+create_table [[
 CREATE TABLE SUPPLIER (
   S_SUPPKEY   INTEGER PRIMARY KEY NOT NULL,
   S_NAME      TEXT NOT NULL,
@@ -33,8 +55,10 @@ CREATE TABLE SUPPLIER (
   S_ACCTBAL   INTEGER NOT NULL,
   S_COMMENT   TEXT NOT NULL,
   FOREIGN KEY (S_NATIONKEY) REFERENCES NATION(N_NATIONKEY)
-);
+)
+]]
 
+create_table [[
 CREATE TABLE PARTSUPP (
   PS_PARTKEY    INTEGER NOT NULL,
   PS_SUPPKEY    INTEGER NOT NULL,
@@ -44,8 +68,10 @@ CREATE TABLE PARTSUPP (
   PRIMARY KEY (PS_PARTKEY, PS_SUPPKEY),
   FOREIGN KEY (PS_SUPPKEY) REFERENCES SUPPLIER(S_SUPPKEY),
   FOREIGN KEY (PS_PARTKEY) REFERENCES PART(P_PARTKEY)
-);
+)
+]]
 
+create_table [[
 CREATE TABLE CUSTOMER (
   C_CUSTKEY    INTEGER PRIMARY KEY NOT NULL,
   C_NAME       TEXT NOT NULL,
@@ -56,8 +82,10 @@ CREATE TABLE CUSTOMER (
   C_MKTSEGMENT TEXT NOT NULL,
   C_COMMENT    TEXT NOT NULL,
   FOREIGN KEY (C_NATIONKEY) REFERENCES NATION(N_NATIONKEY)
-);
+)
+]]
 
+create_table [[
 CREATE TABLE ORDERS (
   O_ORDERKEY      INTEGER PRIMARY KEY NOT NULL,
   O_CUSTKEY       INTEGER NOT NULL,
@@ -69,8 +97,10 @@ CREATE TABLE ORDERS (
   O_SHIPPRIORITY  INTEGER NOT NULL,
   O_COMMENT       TEXT NOT NULL,
   FOREIGN KEY (O_CUSTKEY) REFERENCES CUSTOMER(C_CUSTKEY)
-);
+)
+]]
 
+create_table [[
 CREATE TABLE LINEITEM (
   L_ORDERKEY      INTEGER NOT NULL,
   L_PARTKEY       INTEGER NOT NULL,
@@ -91,4 +121,6 @@ CREATE TABLE LINEITEM (
   PRIMARY KEY (L_ORDERKEY, L_LINENUMBER),
   FOREIGN KEY (L_ORDERKEY) REFERENCES ORDERS(O_ORDERKEY),
   FOREIGN KEY (L_PARTKEY, L_SUPPKEY) REFERENCES PARTSUPP(PS_PARTKEY, PS_SUPPKEY)
-);
+)
+]]
+
