@@ -22,7 +22,6 @@ for i in 7 8 9 13; do
 	check_q $i
 	check_q $i
 done
-exit 0
 
 for i in 1 2 3 4 5 6 10 11 12 14 15 16 18 19 21 22; do
 	check_q $i
