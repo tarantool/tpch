@@ -1,2 +1,4 @@
 TPC-H.db
 *.o
+*.snap
+*.xlog
