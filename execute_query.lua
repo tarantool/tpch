@@ -1,5 +1,5 @@
 box.cfg{ listen = 3301, memtx_memory = 10 * 1024^3 }
-local socket = require 'socket'
+local clock = require 'clock'
 
 local function exec_query(cdata)
     print(cdata)
@@ -8,12 +8,12 @@ end
 
 local function bench(func, iterations)
     -- hopefully socket.gettime will provide us microsecond precision
-    local t = socket.gettime()
+    local t = clock.monotonic()
 
     for i=1,iterations,1 do
         func()
     end
-    t = socket.gettime() - t
+    t = clock.monotonic() - t
     
     -- ignore negligible timings
     if t < (0.001*iterations) then
