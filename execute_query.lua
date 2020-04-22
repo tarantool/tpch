@@ -11,11 +11,14 @@ local dryrun = false
 local port = 3301
 local mem_size = 10 * 1024^3
 
+local excluded_tests = {13} -- FIXME -- Q13 is 4h50mins long
+
 local function config(portN, memSz)
     if not dryrun then
         box.cfg{ listen = portN, memtx_memory = memSz }
     end
 end
+
 local function exec_query(cdata)
     if verbose then
         print(cdata)
@@ -39,6 +42,7 @@ local function bench(func)
     local t = clock.monotonic()
 
     for i=1,repeatN,1 do
+        print('.')
         func()
     end
     t = clock.monotonic() - t
@@ -76,6 +80,7 @@ end
 
 local function single_query(q)
     local qname = string.format("queries/%s.sql", q)
+    print(qname)
     t_ = bench(
             function() 
                 local query_line = flat_file_string(qname) -- qname captured
@@ -83,6 +88,13 @@ local function single_query(q)
             end)
     print("Q"..q .. ';' .. (t_ and t_ / repeatN or -1))
 end
+
+local function Set(list)
+    local set = {}
+    for _, l in ipairs(list) do set[l] = true end
+    return set
+end
+local banned_set = Set(excluded_tests)
 
 local function show_usage()
     print(arg[-1] .. ' ' .. arg[0],
@@ -100,47 +112,39 @@ local function show_usage()
     )
 end
 
--- if no arguments provided - process all queries
-if #arg == 0 then
-    for q = 1,22,1 do
-        single_query(q)
-    end
-else
-    for opt, arg in getopt(arg, 'q:n:p:m:yv', nonoptions) do
-        if opt == 'q' then
-            queryN = arg
-        elseif opt == 'n' then
-            repeatN = arg
-        elseif opt == 'p' then
-            portN = arg
-        elseif opt == 'm' then
-            mem_size = arg
-        elseif opt == 'y' then
-            dryrun = true
-        elseif opt == 'v' then
-            verbose = true
-        elseif opt == '?' then
-            show_usage()
-            os.exit(1)
-        end
-    end
-
-    config(portN, mem_size)
-
-    assert(queryN)
-    single_query(queryN)
-
-    --[[
-
-    print(repeatN, queryN, verbose)
-
-
-    if #nonoptions >= 1 then
-        print('error: wrong number of arguments: ' .. #nonoptions)
+for opt, arg in getopt(arg, 'q:n:p:m:yv', nonoptions) do
+    if opt == 'q' then
+        queryN = arg
+    elseif opt == 'n' then
+        repeatN = arg
+    elseif opt == 'p' then
+        portN = arg
+    elseif opt == 'm' then
+        mem_size = arg
+    elseif opt == 'y' then
+        dryrun = true
+    elseif opt == 'v' then
+        verbose = true
+    elseif opt == '?' then
+        show_usage()
         os.exit(1)
     end
+end
 
-    ]]
+config(portN, mem_size)
+
+-- if no query selected - process all queries
+if queryN == nil then
+    for q = 1,22,1 do
+        if banned_set[q] == nil then
+            single_query(q)
+        else
+            print('Q'..q..';-2')
+	end
+    end
+else
+    assert(queryN)
+    single_query(queryN)
 end
 
 os.exit(0)

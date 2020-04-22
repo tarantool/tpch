@@ -1,4 +1,4 @@
-box.cfg{ listen = 3301, memtx_memory = 10 * 1024^3 }
+box.cfg{ listen = 83301, memtx_memory = 10 * 1024^3 }
 -- box.schema.user.drop('guest', {['read,write,execute']= 'universe'})
 box.schema.user.grant('guest', 'read,write,execute', 'universe', 
                        nil, {if_not_exists=true})
