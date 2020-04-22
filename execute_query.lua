@@ -11,7 +11,8 @@ local dryrun = false
 local port = 3301
 local mem_size = 10 * 1024^3
 
-local excluded_tests = {13} -- FIXME -- Q13 is 4h50mins long
+-- FIXME -- Q13 is 4h50mins long, Q17 - 48mins, and Q20 - 1h11mins
+local excluded_tests = {13, 17, 20}
 
 local function config(portN, memSz)
     if not dryrun then
@@ -19,18 +20,50 @@ local function config(portN, memSz)
     end
 end
 
-local function exec_query(cdata)
-    if verbose then
-        print(cdata)
+-- concatenate lines, but split by ';', if there
+-- are multiple statements
+local function sql_stmts(qname)
+    local f = assert(io.open(qname, "rb"))
+    return function()
+        local query = {}
+        local line
+
+        while true do
+            line = f:read('*line')
+            if not line then return nil end
+            line = string.gsub(line, '%s+', ' ')
+
+            -- skip empty lines or comments
+            if not string.match(line, '^%s*$') and
+               not string.match(line, '^%-%-.*$')
+            then
+                table.insert(query, line)
+            end
+            -- FIXME - assumption that ; is trailing at the line
+            if string.match(line, ';%s*$') then break end
+        end
+
+        return table.concat(query, ' '):gsub('%s+', ' '):gsub(';', '')
     end
+end
+
+local function exec_query(qname)
     local res, err = nil, nil
-    if not dryrun then
-        res, err = box.execute(cdata)
+    local lines = sql_stmts(qname)
+    for query_line in lines do
         if verbose then
-            if err ~= nil then
-                print(err)
-            else
-                print(yaml.encode(res))
+            print(query_line .. ';;')
+        end
+
+        if not dryrun then
+            res, err = box.execute(query_line)
+            if verbose then
+                if err ~= nil then
+                    print(err)
+                    return res
+                else
+                    print(yaml.encode(res))
+                end
             end
         end
     end
@@ -52,30 +85,7 @@ local function bench(func)
         return nil
     end
 
-    return t
-end
-
-local function flat_file_string(qname) 
-    local f = assert(io.open(qname, "rb"))
-    -- print (qname)
-    local query = {}
-    local line
-    while true do
-        line = f:read('*line')
-        if not line then break end
-        line = string.gsub(line, '%s+', ' ')
-
-        -- skip empty lines or comments
-        if not string.match(line, '^%s*$') and
-           not string.match(line, '^%-%-.*$')
-        then
-            -- print(line)
-            table.insert(query, line)
-        end
-        if string.match(line, ';$') then break end
-    end
-
-    return table.concat(query, ' '):gsub('%s+', ' '):gsub(';', '')
+    return t / repeatN
 end
 
 local function single_query(q)
@@ -83,10 +93,9 @@ local function single_query(q)
     print(qname)
     t_ = bench(
             function() 
-                local query_line = flat_file_string(qname) -- qname captured
-                exec_query(query_line)
+                exec_query(qname)
             end)
-    print("Q"..q .. ';' .. (t_ and t_ / repeatN or -1))
+    print("Q"..q .. ';' .. (t_ and t_ or -1))
 end
 
 local function Set(list)
@@ -94,6 +103,7 @@ local function Set(list)
     for _, l in ipairs(list) do set[l] = true end
     return set
 end
+
 local banned_set = Set(excluded_tests)
 
 local function show_usage()
