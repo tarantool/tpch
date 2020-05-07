@@ -27,18 +27,18 @@ gen-queries: $(QGEN)
 	./gen_queries.sh	
 
 # SQLite: populate databases
-$(SQLITE_DB): $(TABLE_FILES)
+$(SQLITE_DB): | $(TABLE_FILES)
 	./create_db.sh $(TABLES)
 
 # Tarantool: populate database 
-$(TNT_DB): $(TABLE_FILES)
+$(TNT_DB): | $(TABLE_FILES)
 	$(TARANTOOL) create_table.lua
 
 # run benchmarks
-bench_sqlite: $(SQLITE_DB)
+bench-sqlite: $(SQLITE_DB)
 	./bench_queries.sh
 
-bench_tnt: $(TNT_DB)
+bench-tnt: $(TNT_DB)
 	$(TARANTOOL) bench_query.lua -n 3 
 
 # clean everything
