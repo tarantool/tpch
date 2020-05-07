@@ -316,6 +316,8 @@ long      weight,
         {
         if ((c = strchr(line, '\n')) != NULL)
             *c = '\0';
+        if ((c = strchr(line, '\r')) != NULL)
+            *c = '\0';
         if ((c = strchr(line, '#')) != NULL)
             *c = '\0';
         if (*line == '\0')
@@ -323,9 +325,9 @@ long      weight,
 
         if (!name_set)
             {
-            if (dsscasecmp(strtok(line, "\n\t "), "BEGIN"))
+            if (dsscasecmp(strtok(line, "\r\n\t "), "BEGIN"))
                 continue;
-            if (dsscasecmp(strtok(NULL, "\n\t "), name))
+            if (dsscasecmp(strtok(NULL, "\r\n\t "), name))
                 continue;
             name_set = 1;
             continue;
