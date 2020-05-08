@@ -12,7 +12,7 @@ local port = 3301
 local mem_size = 10 * 1024^3
 
 -- FIXME -- Q13 is 4h50mins long, Q17 - 48mins, and Q20 - 1h11mins
-local excluded_tests = {13, 17, 20}
+local excluded_tests = {} -- {13, 17, 20}
 
 local function config(portN, memSz)
     if not dryrun then
