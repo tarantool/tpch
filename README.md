@@ -1,27 +1,36 @@
-# TPCH-sqlite [![Build Status](https://travis-ci.org/lovasoa/TPCH-sqlite.svg?branch=master)](https://travis-ci.org/lovasoa/TPCH-sqlite)
+# Tarantool-TPCH 
 
-This is a small shell script that generates an SQLite3 database following the [TPC-H standard](http://www.tpc.org/tpch/).
-It uses the official [tpch-dbgen](https://github.com/electrum/tpch-dbgen) tool to generate the data, and then imports it into an sqlite database.
+This is a set of script to run TPC-H benchmarks with SQLite and Tarantool
+databases. It was created as a development of SQLite3 benchmark from https://github.com/lovasoa/TPCH-sqlite but then heavily modified to 
+actually run queries in SQLite, collect timings, and do the same
+with Tarantool (which would be running exactly the same queries as 
+SQLite)
 
-## Download the database
-
-If you don’t want to generate the database yourself, you can download it from the **realeases** section of this github repo.
-
- * [TPC-H.db](https://github.com/lovasoa/TPCH-sqlite/releases/download/v1.0/TPC-H.db). This is a conforming TPC-H database with a scale factor of 1. The database file size is **1.17 GB**.
- * [TPC-H-small.db](https://github.com/lovasoa/TPCH-sqlite/releases/download/v1.0/TPC-H-small.db). This database does not conform to the standard, as it has a scale factor of 0.01, but it is much smaller: **11.6 MB**.
+It uses the official [tpch-dbgen v2.18.0_rc2](https://github.com/tsafin/tpch) tool to generate the data, and then imports it into an databases.
 
 
 ## How to use
 
-Clone this repository and its submodule. Then just run `make` from the root directory of this repo. Be sure to have `sqlite3` and a C compiler installed.
+Clone this repository then just run `make` from the root directory of this repo. Be sure to have `sqlite3`, C compiler and Tarantool installed.
 
 ```
-git clone --recursive git@github.com:lovasoa/TPCH-sqlite.git
-cd TPCH-sqlite
+git clone git@github.com:tsafin/tnt-tpch.git
+cd tnt-tpch
 make
 ```
 
-This generates an SQLite3 database under the name `TPC-H.db`.
+It assumes that SQLite executable is available on the PATH as `sqlite3`,
+and Tarantool as `tarantool`. If you need to redefine Tarantool executable
+path then override it via environment variable `$TARANTOOL`
+
+```
+TARANTOOL=../tarantool/build/src/build make
+```
+
+* Generated SQLite3 database will be located as `TPC-H.db`.
+* Generated Tarantool snapshots will be `*.snap` and `*.xlog`
+* Benchmark log for SQLite will be in `bench-sqlite.log`
+* Benchmark log for Tarantool will be in `bench-tnt.log`
 
 ### How to set a custom scale factor
 
