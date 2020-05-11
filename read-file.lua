@@ -38,3 +38,6 @@ for _, tblname in ipairs(tables) do
     end
     f:close()
 end
+
+box.snapshot()
+os.exit(0)
