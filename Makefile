@@ -43,8 +43,8 @@ bench-tnt: $(TNT_DB)
 	$(TARANTOOL) execute_query.lua -n 3 | tee bench-tnt.log
 
 report:
-	./report.pl bench-sqlite.log > bench-sqlite.csv
-	./report.pl bench-tnt.log > bench-tnt.csv
+	perl ./report.pl bench-sqlite.log > bench-sqlite.csv
+	grep '^Q' bench-tnt.log > bench-tnt.csv
 
 # clean everything
 clean: clean-tpch clean-sqlite clean-tnt
