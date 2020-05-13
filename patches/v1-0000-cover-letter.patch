@@ -1,0 +1,53 @@
+From 2631ec28993bed761541a48a7a727fad1936311c Mon Sep 17 00:00:00 2001
+Message-Id: <cover.1588234865.git.tsafin@tarantool.org>
+From: Timur Safin <tsafin@tarantool.org>
+Date: Thu, 30 Apr 2020 11:21:05 +0300
+Subject: [PATCH v1 0/2] Make TPC-H run again 
+
+NB! This is not going to be submitted, and I'm sending this 
+patch-set to just make visible all necessary patches, to keep 
+it for later usage with TPC-H queries we ought to run regularly.
+
+We restore preliminary DATE types support (right now that would 
+mean simple STRING) with a set of built-in SQL functions, which
+were necessary to make run big chunk (13 out of 22) of SQL TPC-H 
+benchmark queries. 
+
+There is opinion that we do not want make date support available
+as officially supported, to avoid future data migrations, once we 
+will complete proper datetime types support based on decimals. 
+So I'll keep these patches handy for foresable future...
+
+Changes in v1:
+Nothing substantial - just trying to link commits with original
+GitHub issues #4898
+
+GH issue: https://github.com/tarantool/tarantool/issues/4898
+GitHub branch:
+https://github.com/tarantool/tarantool/tree/tsafin/gh-4898-sql-datetime-mocks
+
+
+Timur Safin (2):
+  Restore partial date/time support in Tarantool SQL
+  Restore date/datetime tests
+
+ extra/mkkeywordhash.c                |  10 +--
+ src/box/sql/date.c                   |  70 +++------------
+ src/box/sql/dateInt.h                | 122 +++++++++++++++++++++++++++
+ src/box/sql/func.c                   |  49 +++++------
+ src/box/sql/parse.y                  |  27 +++---
+ test/sql-tap/date.test.lua           |   4 -
+ test/sql-tap/keyword1.test.lua       |   5 +-
+ test/sql-tap/table.test.lua          |   6 +-
+ test/sql-tap/tkt-7bbfb7d442.test.lua |   4 +-
+ test/sql-tap/tkt-bd484a090c.test.lua |   6 +-
+ test/sql-tap/tkt2192.test.lua        |   6 +-
+ test/sql-tap/tkt3791.test.lua        |   5 +-
+ test/sql/triggers.result             |   4 +-
+ test/sql/triggers.test.lua           |   4 +-
+ 14 files changed, 186 insertions(+), 136 deletions(-)
+ create mode 100644 src/box/sql/dateInt.h
+
+-- 
+2.20.1
+

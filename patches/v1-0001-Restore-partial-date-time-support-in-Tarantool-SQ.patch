@@ -1,0 +1,500 @@
+From f09bbea629a7e4c532076d8249ea0c71b98f796e Mon Sep 17 00:00:00 2001
+Message-Id: <f09bbea629a7e4c532076d8249ea0c71b98f796e.1588234865.git.tsafin@tarantool.org>
+In-Reply-To: <cover.1588234865.git.tsafin@tarantool.org>
+References: <cover.1588234865.git.tsafin@tarantool.org>
+From: Timur Safin <tsafin@tarantool.org>
+Date: Wed, 22 Apr 2020 02:43:49 +0300
+Subject: [PATCH v1 1/2] Restore partial date/time support in Tarantool SQL
+
+Commit #3caeb33cdaf4b37974fd5f12e08310502d9e73f3 has disabled
+DATETIME support in Tarantool SQL. Now we are restoring it
+to make possible to run TPC-H queries. We restore functions
+and they will use underlying STRING type, instead of actual
+date types. This is better than nothing for today.
+
+We will complete actual date/datetime types support once
+DECIMAL type will land here.
+
+Closes #4898
+---
+ extra/mkkeywordhash.c |  10 ++--
+ src/box/sql/date.c    |  70 ++++--------------------
+ src/box/sql/dateInt.h | 122 ++++++++++++++++++++++++++++++++++++++++++
+ src/box/sql/func.c    |  49 ++++++++---------
+ src/box/sql/parse.y   |  27 +++++-----
+ 5 files changed, 174 insertions(+), 104 deletions(-)
+ create mode 100644 src/box/sql/dateInt.h
+
+diff --git a/extra/mkkeywordhash.c b/extra/mkkeywordhash.c
+index dd42c8f5f..b6e7a687a 100644
+--- a/extra/mkkeywordhash.c
++++ b/extra/mkkeywordhash.c
+@@ -193,11 +193,11 @@ static Keyword aKeywordTable[] = {
+   { "CURRENT",                "TK_STANDARD",    true  },
+   { "CURRENT_USER",           "TK_STANDARD",    true  },
+   { "CURSOR",                 "TK_STANDARD",    true  },
+-  { "CURRENT_DATE",           "TK_STANDARD",    true  },
+-  { "CURRENT_TIME",           "TK_STANDARD",    true  },
+-  { "CURRENT_TIMESTAMP",      "TK_STANDARD",    true  },
+-  { "DATE",                   "TK_STANDARD",    true  },
+-  { "DATETIME",               "TK_STANDARD",    true  },
++  { "CURRENT_DATE",           "TK_CTIME_KW",    true  },
++  { "CURRENT_TIME",           "TK_CTIME_KW",    true  },
++  { "CURRENT_TIMESTAMP",      "TK_CTIME_KW",    true  },
++  { "DATE",                   "TK_DATE",        true  },
++  { "DATETIME",               "TK_DATETIME",    true  },
+   { "DECIMAL",                "TK_STANDARD",    true  },
+   { "DECLARE",                "TK_STANDARD",    true  },
+   { "DENSE_RANK",             "TK_STANDARD",    true  },
+diff --git a/src/box/sql/date.c b/src/box/sql/date.c
+index dffc23616..41bff8b98 100644
+--- a/src/box/sql/date.c
++++ b/src/box/sql/date.c
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright 2010-2017, Tarantool AUTHORS, please see AUTHORS file.
++ * Copyright 2010-2020, Tarantool AUTHORS, please see AUTHORS file.
+  *
+  * Redistribution and use in source and binary forms, with or
+  * without modification, are permitted provided that the following
+@@ -64,17 +64,11 @@
+  *      Willmann-Bell, Inc
+  *      Richmond, Virginia (USA)
+  */
+-#include "sqlInt.h"
++#include "dateInt.h"
+ #include <stdlib.h>
+ #include <assert.h>
+ #include <time.h>
+ 
+-/*
+- * Till time-like types are implemented as native Tarantool
+- * types, built-in functions below make no sense.
+- */
+-#if 0
+-
+ /*
+  * A structure for holding a single date and time.
+  */
+@@ -958,7 +952,7 @@ isDate(sql_context * context, int argc, sql_value ** argv, DateTime * p)
+  *
+  * Return the julian day number of the date specified in the arguments
+  */
+-static void
++void
+ juliandayFunc(sql_context * context, int argc, sql_value ** argv)
+ {
+ 	DateTime x;
+@@ -973,7 +967,7 @@ juliandayFunc(sql_context * context, int argc, sql_value ** argv)
+  *
+  * Return YYYY-MM-DD HH:MM:SS
+  */
+-static void
++void
+ datetimeFunc(sql_context * context, int argc, sql_value ** argv)
+ {
+ 	DateTime x;
+@@ -992,7 +986,7 @@ datetimeFunc(sql_context * context, int argc, sql_value ** argv)
+  *
+  * Return HH:MM:SS
+  */
+-static void
++void
+ timeFunc(sql_context * context, int argc, sql_value ** argv)
+ {
+ 	DateTime x;
+@@ -1010,7 +1004,7 @@ timeFunc(sql_context * context, int argc, sql_value ** argv)
+  *
+  * Return YYYY-MM-DD
+  */
+-static void
++void
+ dateFunc(sql_context * context, int argc, sql_value ** argv)
+ {
+ 	DateTime x;
+@@ -1042,7 +1036,7 @@ dateFunc(sql_context * context, int argc, sql_value ** argv)
+  *   %Y  year 0000-9999
+  *   %%  %
+  */
+-static void
++void
+ strftimeFunc(sql_context * context, int argc, sql_value ** argv)
+ {
+ 	DateTime x;
+@@ -1215,7 +1209,7 @@ strftimeFunc(sql_context * context, int argc, sql_value ** argv)
+  *
+  * This function returns the same value as time('now').
+  */
+-static void
++void
+ ctimeFunc(sql_context * context, int NotUsed, sql_value ** NotUsed2)
+ {
+ 	UNUSED_PARAMETER2(NotUsed, NotUsed2);
+@@ -1227,7 +1221,7 @@ ctimeFunc(sql_context * context, int NotUsed, sql_value ** NotUsed2)
+  *
+  * This function returns the same value as date('now').
+  */
+-static void
++void
+ cdateFunc(sql_context * context, int NotUsed, sql_value ** NotUsed2)
+ {
+ 	UNUSED_PARAMETER2(NotUsed, NotUsed2);
+@@ -1239,54 +1233,10 @@ cdateFunc(sql_context * context, int NotUsed, sql_value ** NotUsed2)
+  *
+  * This function returns the same value as datetime('now').
+  */
+-static void
++void
+ ctimestampFunc(sql_context * context,
+ 	       int NotUsed, sql_value ** NotUsed2)
+ {
+ 	UNUSED_PARAMETER2(NotUsed, NotUsed2);
+ 	datetimeFunc(context, 0, 0);
+ }
+-#endif				/* !defined(SQL_OMIT_DATETIME_FUNCS) */
+-
+-#ifdef SQL_OMIT_DATETIME_FUNCS
+-/*
+- * If the library is compiled to omit the full-scale date and time
+- * handling (to get a smaller binary), the following minimal version
+- * of the functions current_time(), current_date() and current_timestamp()
+- * are included instead. This is to support column declarations that
+- * include "DEFAULT CURRENT_TIME" etc.
+- *
+- * This function uses the C-library functions time(), gmtime()
+- * and strftime(). The format string to pass to strftime() is supplied
+- * as the user-data for the function.
+- */
+-static void
+-currentTimeFunc(sql_context * context, int argc, sql_value ** argv)
+-{
+-	time_t t;
+-	char *zFormat = (char *)sql_user_data(context);
+-	sql_int64 iT;
+-	struct tm *pTm;
+-	struct tm sNow;
+-	char zBuf[20];
+-
+-	UNUSED_PARAMETER(argc);
+-	UNUSED_PARAMETER(argv);
+-
+-	iT = sqlStmtCurrentTime(context);
+-	if (iT <= 0)
+-		return;
+-	t = iT / 1000 - 10000 * (sql_int64) 21086676;
+-#if HAVE_GMTIME_R
+-	pTm = gmtime_r(&t, &sNow);
+-#else
+-	pTm = gmtime(&t);
+-	if (pTm)
+-		memcpy(&sNow, pTm, sizeof(sNow));
+-#endif
+-	if (pTm) {
+-		strftime(zBuf, 20, zFormat, &sNow);
+-		sql_result_text(context, zBuf, -1, SQL_TRANSIENT);
+-	}
+-}
+-#endif
+diff --git a/src/box/sql/dateInt.h b/src/box/sql/dateInt.h
+new file mode 100644
+index 000000000..78bc32c07
+--- /dev/null
++++ b/src/box/sql/dateInt.h
+@@ -0,0 +1,122 @@
++/*
++ * Copyright 2010-2017, Tarantool AUTHORS, please see AUTHORS file.
++ *
++ * Redistribution and use in source and binary forms, with or
++ * without modification, are permitted provided that the following
++ * conditions are met:
++ *
++ * 1. Redistributions of source code must retain the above
++ *    copyright notice, this list of conditions and the
++ *    following disclaimer.
++ *
++ * 2. Redistributions in binary form must reproduce the above
++ *    copyright notice, this list of conditions and the following
++ *    disclaimer in the documentation and/or other materials
++ *    provided with the distribution.
++ *
++ * THIS SOFTWARE IS PROVIDED BY <COPYRIGHT HOLDER> ``AS IS'' AND
++ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
++ * TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
++ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL
++ * <COPYRIGHT HOLDER> OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
++ * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
++ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ * BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ * LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
++ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ */
++
++/*
++ * Internal interface definitions for datetime support in sql.
++ *
++ */
++
++#ifndef dateINT_H
++#define dateINT_H
++
++#include "sqlInt.h"
++#include "vdbeInt.h"
++
++/*
++ *    julianday( TIMESTRING, MOD, MOD, ...)
++ *
++ * Return the julian day number of the date specified in the arguments
++ */
++void
++juliandayFunc(sql_context * context, int argc, sql_value ** argv);
++
++/*
++ *    datetime( TIMESTRING, MOD, MOD, ...)
++ *
++ * Return YYYY-MM-DD HH:MM:SS
++ */
++void
++datetimeFunc(sql_context * context, int argc, sql_value ** argv);
++
++/*
++ *    time( TIMESTRING, MOD, MOD, ...)
++ *
++ * Return HH:MM:SS
++ */
++void
++timeFunc(sql_context * context, int argc, sql_value ** argv);
++
++/*
++ *    date( TIMESTRING, MOD, MOD, ...)
++ *
++ * Return YYYY-MM-DD
++ */
++void
++dateFunc(sql_context * context, int argc, sql_value ** argv);
++
++/*
++ *    strftime( FORMAT, TIMESTRING, MOD, MOD, ...)
++ *
++ * Return a string described by FORMAT.  Conversions as follows:
++ *
++ *   %d  day of month
++ *   %f  * fractional seconds  SS.SSS
++ *   %H  hour 00-24
++ *   %j  day of year 000-366
++ *   %J  * julian day number
++ *   %m  month 01-12
++ *   %M  minute 00-59
++ *   %s  seconds since 1970-01-01
++ *   %S  seconds 00-59
++ *   %w  day of week 0-6  sunday==0
++ *   %W  week of year 00-53
++ *   %Y  year 0000-9999
++ *   %%  %
++ */
++void
++strftimeFunc(sql_context * context, int argc, sql_value ** argv);
++
++/*
++ * current_time()
++ *
++ * This function returns the same value as time('now').
++ */
++void
++ctimeFunc(sql_context * context, int NotUsed, sql_value ** NotUsed2);
++
++/*
++ * current_date()
++ *
++ * This function returns the same value as date('now').
++ */
++void
++cdateFunc(sql_context * context, int NotUsed, sql_value ** NotUsed2);
++
++/*
++ * current_timestamp()
++ *
++ * This function returns the same value as datetime('now').
++ */
++void
++ctimestampFunc(sql_context * context, int NotUsed, sql_value ** NotUsed2);
++
++
++#endif				/* dateINT_H */
+diff --git a/src/box/sql/func.c b/src/box/sql/func.c
+index 376837217..65eaa50d9 100644
+--- a/src/box/sql/func.c
++++ b/src/box/sql/func.c
+@@ -36,6 +36,7 @@
+  */
+ #include "sqlInt.h"
+ #include "vdbeInt.h"
++#include "dateInt.h"
+ #include "version.h"
+ #include "coll/coll.h"
+ #include "tarantoolInt.h"
+@@ -2306,50 +2307,50 @@ static struct {
+ 	 .export_to_sql = true,
+ 	}, {
+ 	 .name = "CURRENT_DATE",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = cdateFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_STRING,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+ 	 .finalize = NULL,
+ 	}, {
+ 	 .name = "CURRENT_TIME",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = ctimeFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_STRING,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+ 	 .finalize = NULL,
+ 	}, {
+ 	 .name = "CURRENT_TIMESTAMP",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = ctimestampFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_STRING,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+ 	 .finalize = NULL,
+ 	}, {
+ 	 .name = "DATE",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = dateFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_STRING,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+ 	 .finalize = NULL,
+ 	}, {
+ 	 .name = "DATETIME",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = datetimeFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_STRING,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+@@ -2456,10 +2457,10 @@ static struct {
+ 	 .export_to_sql = true,
+ 	}, {
+ 	 .name = "JULIANDAY",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = juliandayFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_NUMBER,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+@@ -2716,10 +2717,10 @@ static struct {
+ 	 .finalize = NULL,
+ 	}, {
+ 	 .name = "STRFTIME",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = strftimeFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_STRING,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+@@ -2746,10 +2747,10 @@ static struct {
+ 	 .export_to_sql = true,
+ 	}, {
+ 	 .name = "TIME",
+-	 .call = sql_builtin_stub,
+-	 .export_to_sql = false,
++	 .call = timeFunc,
++	 .export_to_sql = true,
+ 	 .param_count = -1,
+-	 .returns = FIELD_TYPE_ANY,
++	 .returns = FIELD_TYPE_STRING,
+ 	 .aggregate = FUNC_AGGREGATE_NONE,
+ 	 .is_deterministic = false,
+ 	 .flags = 0,
+diff --git a/src/box/sql/parse.y b/src/box/sql/parse.y
+index 995875566..ff88751f6 100644
+--- a/src/box/sql/parse.y
++++ b/src/box/sql/parse.y
+@@ -1178,10 +1178,8 @@ expr(A) ::= id(X) LP distinct(D) exprlist(Y) RP(E). {
+   }
+ }
+ 
+-/*
+- * type_func(A) ::= DATE(A) .
+- * type_func(A) ::= DATETIME(A) .
+- */
++type_func(A) ::= DATE(A) .
++type_func(A) ::= DATETIME(A) .
+ type_func(A) ::= CHAR(A) .
+ expr(A) ::= type_func(X) LP distinct(D) exprlist(Y) RP(E). {
+   if( Y && Y->nExpr>pParse->db->aLimit[SQL_LIMIT_FUNCTION_ARG] ){
+@@ -1202,12 +1200,11 @@ expr(A) ::= id(X) LP STAR RP(E). {
+   A.pExpr = sqlExprFunction(pParse, 0, &X);
+   spanSet(&A,&X,&E);
+ }
+-/*
+- * term(A) ::= CTIME_KW(OP). {
+- *   A.pExpr = sqlExprFunction(pParse, 0, &OP);
+- *   spanSet(&A, &OP, &OP);
+- * }
+- */
++
++term(A) ::= CTIME_KW(OP). {
++  A.pExpr = sqlExprFunction(pParse, 0, &OP);
++  spanSet(&A, &OP, &OP);
++}
+ 
+ %include {
+   /* This routine constructs a binary expression node out of two ExprSpan
+@@ -1810,11 +1807,11 @@ typedef(A) ::= VARBINARY . { A.type = FIELD_TYPE_VARBINARY; }
+ /**
+  * Time-like types are temporary disabled, until they are
+  * implemented as a native Tarantool types (gh-3694).
+- *
+- typedef(A) ::= DATE . { A.type = FIELD_TYPE_NUMBER; }
+- typedef(A) ::= TIME . { A.type = FIELD_TYPE_NUMBER; }
+- typedef(A) ::= DATETIME . { A.type = FIELD_TYPE_NUMBER; }
+-*/
++ */
++
++typedef(A) ::= DATE . { A.type = FIELD_TYPE_NUMBER; }
++typedef(A) ::= TIME . { A.type = FIELD_TYPE_NUMBER; }
++typedef(A) ::= DATETIME . { A.type = FIELD_TYPE_NUMBER; }
+ 
+ 
+ char_len(A) ::= LP INTEGER(B) RP . {
+-- 
+2.20.1
+
