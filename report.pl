@@ -1,3 +1,4 @@
+#!/usr/bin/env perl
 my %Q, @Q;
 my $q = undef;
 while(<>) {
