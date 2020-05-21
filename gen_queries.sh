@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # intentionally using the same seed as within pg-tpch
 RANDOM_SEED=1433771997

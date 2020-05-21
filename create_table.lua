@@ -124,3 +124,4 @@ CREATE TABLE LINEITEM (
 )
 ]]
 
+os.exit(0)
