@@ -91,6 +91,7 @@ local function bench(func)
 end
 
 local function single_query(q)
+    local t_ = nil
     local qname = string.format("queries/%s.sql", q)
     print(qname)
     t_ = bench(
@@ -143,7 +144,7 @@ for opt, arg in getopt(arg, 'q:n:p:m:yv', nonoptions) do
     end
 end
 
-config(portN, mem_size)
+config(port, mem_size)
 
 -- if no query selected - process all queries
 if queryN == nil then

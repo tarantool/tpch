@@ -37,10 +37,10 @@ $(TNT_DB): | $(TABLE_FILES)
 
 # run benchmarks
 bench-sqlite: $(SQLITE_DB)
-	./bench_queries.sh | tee bench-sqlite.log
+	./bench_queries.sh 2>&1 | tee bench-sqlite.log
 
 bench-tnt: $(TNT_DB)
-	$(TARANTOOL) execute_query.lua -n 3 | tee bench-tnt.log
+	$(TARANTOOL) execute_query.lua -n 3 2>&1 | tee bench-tnt.log
 
 report:
 	perl ./report.pl bench-sqlite.log > bench-sqlite.csv
