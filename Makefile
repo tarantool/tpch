@@ -12,7 +12,7 @@ all: | bench-sqlite bench-tnt report
 
 # TPC-H binaries and seed data
 $(TABLE_FILES): $(DBGEN)
-	cd $(TPCHD) && ./dbgen -v -f -s $(SCALE_FACTOR)
+	cd $(TPCHD) && ./dbgen -f -s $(SCALE_FACTOR)
 	chmod +r $(TABLE_FILES)
 
 $(DBGEN) $(QGEN): $(TPCHD)/Makefile
