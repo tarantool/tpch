@@ -7,6 +7,7 @@ TABLE_FILES = $(foreach table, $(TABLES), $(TPCHD)/$(table).tbl)
 TARANTOOL ?= tarantool
 SQLITE_DB = TPC-H.db
 TNT_DB = 00000000000000000000.snap
+NUMAOPTS ?=
 
 all: | bench-sqlite bench-tnt report
 
@@ -26,9 +27,15 @@ gen-queries: $(QGEN)
 	@mkdir -p queries/ > /dev/null
 	./gen_queries.sh	
 
+# target for populate sqlite databese
+create_SQL_db : $(SQLITE_DB)
+
 # SQLite: populate databases
 $(SQLITE_DB): | $(TABLE_FILES) sqlite-ddl.sql
 	./create_db.sh $(TABLES)
+
+# target for populate Tarantool database
+create_TNT_db : $(TNT_DB)
 
 # Tarantool: populate database 
 $(TNT_DB): | $(TABLE_FILES)
@@ -36,11 +43,11 @@ $(TNT_DB): | $(TABLE_FILES)
 	$(TARANTOOL) read-file.lua
 
 # run benchmarks
-bench-sqlite: $(SQLITE_DB)
-	./bench_queries.sh 2>&1 | tee bench-sqlite.log
+bench-sqlite: create_SQL_db
+	$(NUMAOPTS) ./bench_queries.sh 2>&1 | tee bench-sqlite.log
 
-bench-tnt: $(TNT_DB)
-	$(TARANTOOL) execute_query.lua -n 3 2>&1 | tee bench-tnt.log
+bench-tnt: create_TNT_db
+	$(NUMAOPTS) $(TARANTOOL) execute_query.lua -n 3 2>&1 | tee bench-tnt.log
 
 report:
 	perl ./report.pl bench-sqlite.log > bench-sqlite.csv
