@@ -27,7 +27,7 @@ gen-queries: $(QGEN)
 	@mkdir -p queries/ > /dev/null
 	./gen_queries.sh	
 
-# target for populate sqlite databese
+# target for populate sqlite database
 create_SQL_db : $(SQLITE_DB)
 
 # SQLite: populate databases
