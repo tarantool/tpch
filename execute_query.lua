@@ -7,6 +7,7 @@ local queryN = nil
 local nonoptions = {}
 local verbose = false
 local dryrun = false
+local explain = false
 
 local port = 3301
 local mem_size = 10 * 1024^3
@@ -49,17 +50,53 @@ local function sql_stmts(qname)
     end
 end
 
+local function show_plan(tuples)
+    local widths = {4, 13, 4, 4, 4, 13, 2, 13}
+    local headers = {'addr', 'opcode', 'p1', 'p2', 'p3', 'p4', 'p5', 'comment'}
+    local strike = '-------------------------------------------'
+
+    -- header column names
+    local header = ''
+    for i = 1, #headers do
+        header = header .. string.ljust(headers[i], widths[i] + 1)
+    end
+    print(header)
+
+    -- header underline
+    header = ''
+    for i = 1, #headers do
+        header = header .. string.sub(strike, 1, widths[i] + 1)
+    end
+    print(header)
+
+    -- and actual tuples
+    for _, row in pairs(tuples.rows) do
+        r = {}
+        for i=1,#row do
+            table.insert(r, string.ljust('' .. row[i], widths[i] + 1))
+        end
+        print(table.concat(r))
+    end
+end
+
 local function exec_query(qname)
     local res, err = nil, nil
     local lines = sql_stmts(qname)
     for query_line in lines do
+        if explain then
+            query_line = 'explain ' .. query_line
+        end
         if verbose then
             print(query_line .. ';;')
         end
 
         if not dryrun then
+
             res, err = box.execute(query_line)
-            if verbose then
+
+            if explain then
+                show_plan(res)
+            elseif verbose then
                 if err ~= nil then
                     print(err)
                     return res
@@ -91,7 +128,7 @@ local function bench(func)
 end
 
 local function single_query(q)
-    local t_ = nil
+    local t_
     local qname = string.format("queries/%s.sql", q)
     print(qname)
     t_ = bench(
@@ -116,6 +153,7 @@ local function show_usage()
             Usage: q:n:p:m:tv
 
             -q N .. execute query `queries/N.sql`
+            -e N .. explain query `queries/N.sql`
             -n N .. repeat N times
             -p N .. listen port N
             -m N .. memtix memory size
@@ -125,8 +163,12 @@ local function show_usage()
     )
 end
 
-for opt, arg in getopt(arg, 'q:n:p:m:yv', nonoptions) do
+for opt, arg in getopt(arg, 'e:q:n:p:m:yv', nonoptions) do
     if opt == 'q' then
+        queryN = arg
+     -- explain is kinda dryrun, but with query plain displayed
+    elseif opt == 'e' then
+        explain = true
         queryN = arg
     elseif opt == 'n' then
         repeatN = arg
@@ -153,7 +195,7 @@ if queryN == nil then
             single_query(q)
         else
             print('Q'..q..';-2')
-	end
+        end
     end
 else
     assert(queryN)
