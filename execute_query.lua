@@ -50,6 +50,19 @@ local function sql_stmts(qname)
     end
 end
 
+local nIndents = {
+    ['Next'] = -2, ['Prev'] = -2,
+    ['VPrev'] = -2, ['VNext'] = -2,
+    ['SorterNext'] = -2,
+    ['SorterSort'] = 2,
+    ['InitCoroutine'] = 2, ['EndCoroutine'] = -2,
+    ['SeekGE'] = 2, ['SeekGT'] = 2, ['SeekLT'] = 2,
+    ['Rewind'] = 2, ['RowSetRead'] = 2,
+
+}
+-- local azYield = { "Yield", "SeekLT", "SeekGT", "RowSetRead", "Rewind" }
+-- local azGoto = { "Goto" }
+
 local function show_plan(tuples)
     local widths = {4, 13, 4, 4, 4, 13, 2, 13}
     local headers = {'addr', 'opcode', 'p1', 'p2', 'p3', 'p4', 'p5', 'comment'}
@@ -69,12 +82,40 @@ local function show_plan(tuples)
     end
     print(header)
 
+    -- local indentMx = 2 -- multiplier for indents
+    local indent = 0
+
     -- and actual tuples
     for _, row in pairs(tuples.rows) do
         r = {}
-        for i=1,#row do
-            table.insert(r, string.ljust('' .. row[i], widths[i] + 1))
+        local addr = row[1]
+        local opcode = row[2]
+
+        -- output row address without indents
+        table.insert(r, string.ljust(''..addr, widths[1] + 1))
+
+        local indentAfter = 0
+        local indentBefore = 0
+        local n = nIndents[opcode] or 0
+
+        -- reduce indent before Next
+        if n < 0 then
+            indent = indent + n
         end
+
+        local c = string.ljust('', indent)
+        table.insert(r, string.ljust(c..opcode, widths[2] + indent + 1))
+
+        -- output opcode and arguments with indents
+        for i = 3, #row do
+            table.insert(r, string.ljust(''..row[i], widths[i] + 1))
+        end
+
+        -- increase indent for Rewind
+        if n > 0 then
+            indent = indent + n
+        end
+
         print(table.concat(r))
     end
 end
