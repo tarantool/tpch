@@ -51,14 +51,12 @@ local function sql_stmts(qname)
 end
 
 local nIndents = {
-    ['Next'] = -2, ['Prev'] = -2,
-    ['VPrev'] = -2, ['VNext'] = -2,
-    ['SorterNext'] = -2,
-    ['SorterSort'] = 2,
-    ['InitCoroutine'] = 2, ['EndCoroutine'] = -2,
-    ['SeekGE'] = 2, ['SeekGT'] = 2, ['SeekLT'] = 2,
-    ['Rewind'] = 2, ['RowSetRead'] = 2,
-
+    Next = -2, Prev = -2,
+    VPrev = -2, VNext = -2,
+    SorterNext = -2, SorterSort = 2,
+    InitCoroutine = 2, EndCoroutine = -2,
+    SeekGE = 2, SeekGT = 2, SeekLT = 2,
+    Rewind = 2, RowSetRead = 2,
 }
 -- local azYield = { "Yield", "SeekLT", "SeekGT", "RowSetRead", "Rewind" }
 -- local azGoto = { "Goto" }
