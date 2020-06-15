@@ -6,6 +6,7 @@ local repeatN = 4
 local queryN = nil
 local nonoptions = {}
 local verbose = false
+local debug_output = false
 local dryrun = false
 local explain = false
 
@@ -53,7 +54,7 @@ end
 local nIndents = {
     Next = -2, Prev = -2,
     VPrev = -2, VNext = -2,
-    SorterNext = -2, SorterSort = 2,
+    SorterNext = -2, SorterSort = 2, Sort = 2,
     InitCoroutine = 2, EndCoroutine = -2,
     SeekGE = 2, SeekGT = 2, SeekLT = 2,
     Rewind = 2, RowSetRead = 2,
@@ -85,15 +86,13 @@ local function show_plan(tuples)
 
     -- and actual tuples
     for _, row in pairs(tuples.rows) do
-        r = {}
+        local r = {}
         local addr = row[1]
         local opcode = row[2]
 
         -- output row address without indents
         table.insert(r, string.ljust(''..addr, widths[1] + 1))
 
-        local indentAfter = 0
-        local indentBefore = 0
         local n = nIndents[opcode] or 0
 
         -- reduce indent before Next
@@ -130,6 +129,10 @@ local function exec_query(qname)
         end
 
         if not dryrun then
+
+            if debug_output then
+                res, err = box.execute('set session "sql_vdbe_debug" = true')
+            end
 
             res, err = box.execute(query_line)
 
@@ -197,12 +200,13 @@ local function show_usage()
             -p N .. listen port N
             -m N .. memtix memory size
             -v   .. verbose (show results)
+            -V   .. moch, more verbose (extra run-time execution log)
             -y   .. dry-run
         ]]
     )
 end
 
-for opt, arg in getopt(arg, 'e:q:n:p:m:yv', nonoptions) do
+for opt, arg in getopt(arg, 'e:q:n:p:m:yvV', nonoptions) do
     if opt == 'q' then
         queryN = arg
      -- explain is kinda dryrun, but with query plain displayed
@@ -219,6 +223,9 @@ for opt, arg in getopt(arg, 'e:q:n:p:m:yv', nonoptions) do
         dryrun = true
     elseif opt == 'v' then
         verbose = true
+    elseif opt == 'V' then
+        verbose = true
+        debug_output = true
     elseif opt == '?' then
         show_usage()
         os.exit(1)
