@@ -105,7 +105,8 @@ local function show_plan(tuples)
 
         -- output opcode and arguments with indents
         for i = 3, #row do
-            table.insert(r, string.ljust(''..row[i], widths[i] + 1))
+            local y = row[i] ~= nil and ('' .. row[i]) or ''
+            table.insert(r, string.ljust(y, widths[i] + 1))
         end
 
         -- increase indent for Rewind
