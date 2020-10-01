@@ -157,8 +157,9 @@ local function bench(func)
     local t = clock.monotonic()
 
     for i=1,repeatN,1 do
-        print('.')
+        local t0 = clock.monotonic()
         func()
+        print(i..': '..clock.monotonic() - t0)
     end
     t = clock.monotonic() - t
     
