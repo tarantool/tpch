@@ -1,4 +1,6 @@
 SCALE_FACTOR ?= 1
+RUNN ?= 3
+MEM_SIZE ?= $(shell echo 5*1024^3 | bc)
 TPCHD = tpch-dbgen
 DBGEN = $(TPCHD)/dbgen
 QGEN = $(TPCHD)/qgen
@@ -39,15 +41,15 @@ create_TNT_db : $(TNT_DB)
 
 # Tarantool: populate database 
 $(TNT_DB): | $(TABLE_FILES)
-	$(TARANTOOL) create_table.lua
-	$(TARANTOOL) read-file.lua
+	$(TARANTOOL) create_table.lua -m $(MEM_SIZE)
 
 # run benchmarks
 bench-sqlite: create_SQL_db
 	$(NUMAOPTS) ./bench_queries.sh 2>&1 | tee bench-sqlite.log
 
 bench-tnt: create_TNT_db
-	$(NUMAOPTS) $(TARANTOOL) execute_query.lua -n 3 2>&1 | tee bench-tnt.log
+	$(NUMAOPTS) $(TARANTOOL) execute_query.lua \
+	-m $(MEM_SIZE) -n $(RUNN) 2>&1 | tee bench-tnt.log
 
 report:
 	perl ./report.pl bench-sqlite.log > bench-sqlite.csv
