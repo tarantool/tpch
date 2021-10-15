@@ -10,7 +10,7 @@ local debug_output = false
 local dryrun = false
 local explain = false
 
-local port = 3301
+local portN = 83301
 local mem_size = 10 * 1024^3
 
 local excluded_tests = {}
@@ -19,7 +19,7 @@ io.stdout:setvbuf 'no'
 
 local function config(portN, memSz)
     if not dryrun then
-        box.cfg{ listen = portN, memtx_memory = memSz }
+        box.cfg{ listen = tonumber(portN), memtx_memory = tonumber(memSz) }
     end
 end
 
@@ -118,7 +118,7 @@ local function show_plan(tuples)
 end
 
 local function exec_query(qname)
-    local res, err = nil, nil
+    local res, err
     local lines = sql_stmts(qname)
     for query_line in lines do
         if explain then
@@ -131,7 +131,7 @@ local function exec_query(qname)
         if not dryrun then
 
             if debug_output then
-                res, err = box.execute('set session "sql_vdbe_debug" = true')
+                box.execute('set session "sql_vdbe_debug" = true')
             end
 
             res, err = box.execute(query_line)
@@ -161,7 +161,7 @@ local function bench(func)
         print(i..': '..clock.monotonic() - t0)
     end
     t = clock.monotonic() - t
-    
+
     -- ignore negligible timings
     if t < (0.002*repeatN) then
         return nil
@@ -175,7 +175,7 @@ local function single_query(q)
     local qname = string.format("queries/%s.sql", q)
     print(qname)
     t_ = bench(
-            function() 
+            function()
                 exec_query(qname)
             end)
     print("Q"..q .. ';' .. (t_ and t_ or -1))
@@ -233,7 +233,7 @@ for opt, arg in getopt(arg, 'e:q:n:p:m:yvV', nonoptions) do
     end
 end
 
-config(port, mem_size)
+config(portN, mem_size)
 
 -- if no query selected - process all queries
 if queryN == nil then

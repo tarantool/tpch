@@ -1,16 +1,17 @@
 box.cfg{ listen = 83301, memtx_memory = 10 * 1024^3 }
+local ffi = require 'ffi'
 -- box.schema.user.drop('guest', {['read,write,execute']= 'universe'})
 box.schema.user.grant('guest', 'read,write,execute', 'universe', 
                        nil, {if_not_exists=true})
 
-function create_table(cdata)
-    print(cdata)
-    local lowcase = cdata:lower()
-    table = string.match(lowcase, '^create%s+table%s+(%a+)%s')
+local function create_table(table_ddl)
+    print(table_ddl)
+    local lowcase = table_ddl:lower()
+    local table = string.match(lowcase, '^create%s+table%s+(%a+)%s')
     if not table then return end
     local ddl = string.format('drop table if exists %s', table)
     box.execute(ddl)
-    box.execute(cdata)
+    box.execute(table_ddl)
 end
 
 create_table [[
@@ -92,8 +93,8 @@ CREATE TABLE ORDERS (
   O_ORDERSTATUS   TEXT NOT NULL,
   O_TOTALPRICE    DOUBLE NOT NULL,
   O_ORDERDATE     STRING NOT NULL,
-  O_ORDERPRIORITY TEXT NOT NULL,  
-  O_CLERK         TEXT NOT NULL, 
+  O_ORDERPRIORITY TEXT NOT NULL,
+  O_CLERK         TEXT NOT NULL,
   O_SHIPPRIORITY  INTEGER NOT NULL,
   O_COMMENT       TEXT NOT NULL,
   FOREIGN KEY (O_CUSTKEY) REFERENCES CUSTOMER(C_CUSTKEY)
@@ -123,5 +124,41 @@ CREATE TABLE LINEITEM (
   FOREIGN KEY (L_PARTKEY, L_SUPPKEY) REFERENCES PARTSUPP(PS_PARTKEY, PS_SUPPKEY)
 )
 ]]
+
+-- should obey topological sort order
+-- to not violate foreign key constraints
+local tables = {
+  'region', 'nation', 'part', 'supplier',
+  'partsupp', 'customer', 'orders', 'lineitem'
+  }
+for _, tblname in ipairs(tables) do
+    local f = assert(io.open(string.format("tpch-dbgen/%s.tbl", tblname), 'rb'))
+    print (tblname)
+
+    while true do
+        local line = f:read('*line')
+        if not line then break end
+
+        local t = {}
+        for s in string.gmatch(line, '[^|]+') do
+          local cvt = tonumber(s)
+          if cvt ~= nil then
+            -- hack to retain doubleness for normalized numbers, e.g. 901.00
+            if string.match(s, '-?%d+%.%d+$') then
+              cvt = ffi.cast('double', cvt)
+            end
+          else
+            cvt = s
+          end
+          table.insert(t, cvt)
+        end
+        local tuple = box.tuple.new(t)
+
+        box.space[tblname:upper()]:insert(tuple)
+    end
+    f:close()
+end
+
+box.snapshot()
 
 os.exit(0)
