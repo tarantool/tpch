@@ -1,8 +1,42 @@
-box.cfg{ listen = 83301, memtx_memory = 10 * 1024^3 }
 local ffi = require 'ffi'
+local getopt = require 'getopt'
+
+local nonoptions = {}
+local port = 83301
+local mem_size = 10 * 1024^3
+
+local function config(portN, memSz)
+    box.cfg{ listen = tonumber(portN), memtx_memory = tonumber(memSz) }
+end
+
+local function show_usage()
+    print(arg[-1] .. ' ' .. arg[0],
+        [[
+
+            Usage: m:p:
+
+            -p N .. listen port N
+            -m N .. memtx memory size
+        ]]
+    )
+end
+
+for opt, arg in getopt(arg, 'm:p:', nonoptions) do
+    if opt == 'm' then
+        mem_size = arg
+    elseif opt == 'p' then
+        port = arg
+    elseif opt == '?' then
+        show_usage()
+        os.exit(1)
+    end
+end
+
+config(port, mem_size)
+
 -- box.schema.user.drop('guest', {['read,write,execute']= 'universe'})
-box.schema.user.grant('guest', 'read,write,execute', 'universe', 
-                       nil, {if_not_exists=true})
+box.schema.user.grant('guest', 'read,write,execute', 'universe', nil,
+                      {if_not_exists = true})
 
 local function create_table(table_ddl)
     print(table_ddl)
