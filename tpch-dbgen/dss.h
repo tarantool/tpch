@@ -412,10 +412,10 @@ extern tdef tdefs[];
 #define  CUST_MORTALITY 3  /* portion with have no orders */
 #define  NATIONS_MAX  90 /* limited by country codes in phone numbers */
 #define  PHONE_FMT    "%02d-%03d-%03d-%04d"
-#define  STARTDATE    92001
-#define  CURRENTDATE  95168
-#define  ENDDATE      98365
-#define  TOTDATE      2557
+#define  STARTDATE    111001 /* 2011-01-01 */
+#define  CURRENTDATE  116168 /* 2016-06-17 */
+#define  ENDDATE      121365 /* 2021-12-31 */
+#define  TOTDATE      4017
 #define  UPD_PCT      10
 #define  MAX_STREAM   47
 #define  V_STR_LOW    0.4
@@ -482,10 +482,10 @@ int dbg_print(int dt, FILE *tgt, void *data, int len, int eol);
 #define  PR_END(fp)    fprintf(fp, "\n")   /* finish the record here */
 #ifdef MDY_DATE
 #define  PR_DATE(tgt, yr, mn, dy)	\
-   sprintf(tgt, "%02d-%02d-19%02d", mn, dy, yr)
+   sprintf(tgt, "%02d-%02d-%04d", mn, dy, 1900 + yr)
 #else
 #define  PR_DATE(tgt, yr, mn, dy)	\
-   sprintf(tgt, "19%02ld-%02ld-%02ld", yr, mn, dy)
+   sprintf(tgt, "%04ld-%02ld-%02ld", 1900 + yr, mn, dy)
 #endif /* DATE_FORMAT */
 
 /*
