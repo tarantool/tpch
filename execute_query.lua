@@ -207,19 +207,19 @@ local function show_usage()
     )
 end
 
-for opt, arg in getopt(arg, 'e:q:n:p:m:yvV', nonoptions) do
+for opt, v in getopt(arg, 'e:q:n:p:m:yvV', nonoptions) do
     if opt == 'q' then
-        queryN = arg
+        queryN = v
      -- explain is kinda dryrun, but with query plain displayed
     elseif opt == 'e' then
         explain = true
-        queryN = arg
+        queryN = v
     elseif opt == 'n' then
-        repeatN = arg
+        repeatN = v
     elseif opt == 'p' then
-        portN = arg
+        portN = v
     elseif opt == 'm' then
-        mem_size = arg
+        mem_size = v
     elseif opt == 'y' then
         dryrun = true
     elseif opt == 'v' then
