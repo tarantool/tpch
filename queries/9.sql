@@ -9,7 +9,7 @@ from
 	(
 		select
 			n_name as nation,
-			strftime('%Y', o_orderdate) as o_year,
+			date_part('year', o_orderdate) as o_year,
 			l_extendedprice * (1 - l_discount) - ps_supplycost * l_quantity as amount
 		from
 			part,

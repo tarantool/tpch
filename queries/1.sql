@@ -15,7 +15,7 @@ select
 from
 	lineitem
 where
-	l_shipdate <= date('1998-12-01', '-71 days')
+	l_shipdate <= cast('1998-12-01' as datetime) - cast({'day': 71} as interval)
 group by
 	l_returnflag,
 	l_linestatus

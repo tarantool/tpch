@@ -11,7 +11,7 @@ from
 		select
 			n1.n_name as supp_nation,
 			n2.n_name as cust_nation,
-			strftime('%Y', l_shipdate) as l_year,
+			date_part('year', l_shipdate) as l_year,
 			l_extendedprice * (1 - l_discount) as volume
 		from
 			supplier,
@@ -30,7 +30,8 @@ from
 				(n1.n_name = 'ROMANIA' and n2.n_name = 'INDIA')
 				or (n1.n_name = 'INDIA' and n2.n_name = 'ROMANIA')
 			)
-			and l_shipdate between date('1995-01-01') and date('1996-12-31')
+			and l_shipdate between 
+			cast('1995-01-01' as datetime) and cast('1996-12-31' as datetime)
 	) as shipping
 group by
 	supp_nation,

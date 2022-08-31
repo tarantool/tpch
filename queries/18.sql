@@ -31,6 +31,6 @@ group by
 	o_orderdate,
 	o_totalprice
 order by
-	o_totalprice,
+	o_totalprice desc,
 	o_orderdate
 limit 100;

@@ -19,8 +19,8 @@ where
 	and s_nationkey = n_nationkey
 	and n_regionkey = r_regionkey
 	and r_name = 'MIDDLE EAST'
-	and o_orderdate >= date('1994-01-01')
-	and o_orderdate < date('1994-01-01',  '+ 1 year')
+	and o_orderdate >= cast('1994-01-01' as datetime)
+	and o_orderdate < cast('1994-01-01' as datetime) + cast({'year': 1} as interval)
 group by
 	n_name
 order by

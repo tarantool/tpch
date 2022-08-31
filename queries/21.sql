@@ -38,6 +38,6 @@ where
 group by
 	s_name
 order by
-	numwait,
+	numwait desc,
 	s_name
 limit 100;

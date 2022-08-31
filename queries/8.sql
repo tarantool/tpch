@@ -3,14 +3,14 @@
 
 select
 	o_year,
-	sum(case
+	sum(cast(case
 		when nation = 'INDIA' then volume
 		else 0
-	end) / sum(volume) as mkt_share
+	end as number)) / sum(volume) as mkt_share
 from
 	(
 		select
-			strftime('%Y', o_orderdate) as o_year,
+			date_part('year', o_orderdate) as o_year,
 			l_extendedprice * (1 - l_discount) as volume,
 			n2.n_name as nation
 		from
@@ -31,7 +31,8 @@ from
 			and n1.n_regionkey = r_regionkey
 			and r_name = 'ASIA'
 			and s_nationkey = n2.n_nationkey
-			and o_orderdate between date('1995-01-01') and date('1996-12-31')
+			and o_orderdate between
+				cast('1995-01-01' as datetime) and cast('1996-12-31' as datetime)
 			and p_type = 'PROMO BRUSHED COPPER'
 	) as all_nations
 group by

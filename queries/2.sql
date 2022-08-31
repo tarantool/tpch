@@ -40,7 +40,7 @@ where
 			and r_name = 'MIDDLE EAST'
 	)
 order by
-	s_acctbal,
+	s_acctbal desc,
 	n_name,
 	s_name,
 	p_partkey
