@@ -39,10 +39,6 @@ jobs:
         run: |
           sudo apt-get install -y patch ccache luarocks libmsgpuck-dev libluajit-5.1-dev
 
-      - name: Patch sources
-        run: |
-          cd $GITHUB_WORKSPACE/$TARANTOOL_SRC/
-          patch -p1 < ../patches/0001-*.patch
         # by some odd reason we can't use
         #   working-directory: $GITHUB_WORKSPACE/tarantool/build
         # syntax - directory is not yet existing before actions 
