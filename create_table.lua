@@ -21,11 +21,11 @@ local function show_usage()
     )
 end
 
-for opt, arg in getopt(arg, 'm:p:', nonoptions) do
+for opt, v in getopt(arg, 'm:p:', nonoptions) do
     if opt == 'm' then
-        mem_size = arg
+        mem_size = v
     elseif opt == 'p' then
-        port = arg
+        port = v
     elseif opt == '?' then
         show_usage()
         os.exit(1)
@@ -126,7 +126,7 @@ CREATE TABLE ORDERS (
   O_CUSTKEY       INTEGER NOT NULL,
   O_ORDERSTATUS   TEXT NOT NULL,
   O_TOTALPRICE    DOUBLE NOT NULL,
-  O_ORDERDATE     STRING NOT NULL,
+  O_ORDERDATE     DATETIME NOT NULL,
   O_ORDERPRIORITY TEXT NOT NULL,
   O_CLERK         TEXT NOT NULL,
   O_SHIPPRIORITY  INTEGER NOT NULL,
@@ -147,9 +147,9 @@ CREATE TABLE LINEITEM (
   L_TAX           DOUBLE NOT NULL,
   L_RETURNFLAG    TEXT NOT NULL,
   L_LINESTATUS    TEXT NOT NULL,
-  L_SHIPDATE      STRING NOT NULL,
-  L_COMMITDATE    STRING NOT NULL,
-  L_RECEIPTDATE   STRING NOT NULL,
+  L_SHIPDATE      DATETIME NOT NULL,
+  L_COMMITDATE    DATETIME NOT NULL,
+  L_RECEIPTDATE   DATETIME NOT NULL,
   L_SHIPINSTRUCT  TEXT NOT NULL,
   L_SHIPMODE      TEXT NOT NULL,
   L_COMMENT       TEXT NOT NULL,
@@ -178,9 +178,14 @@ for _, tblname in ipairs(tables) do
           local cvt = tonumber(s)
           if cvt ~= nil then
             -- hack to retain doubleness for normalized numbers, e.g. 901.00
-            if string.match(s, '-?%d+%.%d+$') then
+            if s:match('-?%d+%.%d+$') then
               cvt = ffi.cast('double', cvt)
             end
+          -- hack to intercept datetime-like literals and convert to
+          -- proper cdata type
+          elseif s:match('%d%d%d%d%-%d%d%-%d%d') then
+            local datetime = require 'datetime'
+            cvt = datetime.parse(s)
           else
             cvt = s
           end
