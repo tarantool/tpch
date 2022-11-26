@@ -7,6 +7,8 @@ local mem_size = 10 * 1024^3
 
 local function config(portN, memSz)
     box.cfg{ listen = tonumber(portN), memtx_memory = tonumber(memSz) }
+    local fiber = require('fiber')
+    fiber.set_max_slice(60 * 60) -- "1 hour should be enough for everybody"
 end
 
 local function show_usage()

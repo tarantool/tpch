@@ -20,6 +20,8 @@ io.stdout:setvbuf 'no'
 local function config(portN, memSz)
     if not dryrun then
         box.cfg{ listen = tonumber(portN), memtx_memory = tonumber(memSz) }
+        local fiber = require('fiber')
+        fiber.set_max_slice(60 * 60) -- "1 hour should be enough for everybody"
     end
 end
 
