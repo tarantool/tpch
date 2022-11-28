@@ -1,7 +1,7 @@
 name: quick_check
 
 on:
-  push:
+  pull_request:
   repository_dispatch:
   workflow_dispatch:
 
@@ -37,7 +37,7 @@ jobs:
 
       - name: Install tarantool build prerequisites
         run: |
-          sudo apt-get install -y patch ccache luarocks libmsgpuck-dev libluajit-5.1-dev
+          sudo apt-get install -y patch ccache luarocks libmsgpuck-dev libluajit-5.1-dev libunwind-dev
 
         # by some odd reason we can't use
         #   working-directory: $GITHUB_WORKSPACE/tarantool/build

@@ -7,6 +7,8 @@ local mem_size = 10 * 1024^3
 
 local function config(portN, memSz)
     box.cfg{ listen = tonumber(portN), memtx_memory = tonumber(memSz) }
+    local fiber = require('fiber')
+    fiber.set_max_slice(60 * 60) -- "1 hour should be enough for everybody"
 end
 
 local function show_usage()
@@ -165,13 +167,18 @@ local tables = {
   'region', 'nation', 'part', 'supplier',
   'partsupp', 'customer', 'orders', 'lineitem'
   }
+
 for _, tblname in ipairs(tables) do
     local f = assert(io.open(string.format("tpch-dbgen/%s.tbl", tblname), 'rb'))
-    print (tblname)
+    box.begin()
+    local sql_table = tblname:upper()
+    local lines = 0
+    print ('Loading: ', tblname)
 
     while true do
         local line = f:read('*line')
         if not line then break end
+        lines = lines + 1
 
         local t = {}
         for s in string.gmatch(line, '[^|]+') do
@@ -193,9 +200,26 @@ for _, tblname in ipairs(tables) do
         end
         local tuple = box.tuple.new(t)
 
-        box.space[tblname:upper()]:insert(tuple)
+        local rc, msg = pcall(box.space[sql_table].insert, box.space[sql_table], tuple)
+        if not rc then
+            print(('database %s failed to insert tuple %s: %s'):
+                format(sql_table, require'json'.encode(tuple), msg))
+        end
     end
     f:close()
+    box.commit()
+    -- sanity check - assume we have successfully inserted all tuples
+    local check_lines = box.execute(('select count(*) from %s'):format(sql_table))
+    if not check_lines then
+        error(('database %s is not existing'):format(sql_table))
+    end
+    local count = check_lines.rows[1][1]
+    if count ~= lines then
+        error(('database %s contains %d rows, but expected %d'):
+            format(sql_table, count, lines))
+    else
+        print(('.... %d rows loaded'):format(lines))
+    end
 end
 
 box.snapshot()
