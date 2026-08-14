@@ -20,6 +20,7 @@ io.stdout:setvbuf 'no'
 local function config(portN, memSz)
     if not dryrun then
         box.cfg{ listen = tonumber(portN), memtx_memory = tonumber(memSz) }
+        box.execute('set session "sql_seq_scan" = true')
     end
 end
 
