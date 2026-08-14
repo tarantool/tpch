@@ -5,7 +5,7 @@ create view revenue0 (supplier_no, total_revenue) as
 		l_suppkey,
 		sum(l_extendedprice * (1 - l_discount))
 	from
-		lineitem
+		LINEITEM
 	where
 		l_shipdate >= cast('1993-01-01' as datetime)
 		and l_shipdate < cast('1993-01-01' as datetime) + cast({'month': 3} as interval)
